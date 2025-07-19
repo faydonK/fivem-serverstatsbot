@@ -67,18 +67,33 @@ export default class {
 				maxClients: stats.Data?.sv_maxclients
 			});
 			
-			// Server online.
-			if (!this.online) {
-				this.online = true;
-				console.log('Server is now ONLINE');
+			// Check if we have valid server data
+			if (stats && stats.Data) {
+				// Server online - even if some fields are missing
+				if (!this.online) {
+					this.online = true;
+					console.log('Server is now ONLINE');
+				}
+				
+				// Use fallback values if fields are missing
+				this.maxPlayers = stats.Data.sv_maxclients || stats.Data.svMaxclients || 32;
+				this.currentCount = stats.Data.clients || stats.Data.selfReportedClients || 0;
+				
+				console.log('Updated stats:', {
+					online: this.online,
+					current: this.currentCount,
+					max: this.maxPlayers
+				});
+				
+				// Update bot status when stats change
+				if (this.botInstance) {
+					this.botInstance.updateBotStatus();
+				}
+				return;
+			} else {
+				console.log('Invalid server data structure received');
+				throw new Error('Invalid server data');
 			}
-			this.maxPlayers = stats.Data.sv_maxclients;
-			this.currentCount = stats.Data.clients;
-			// Update bot status when stats change
-			if (this.botInstance) {
-				this.botInstance.updateBotStatus();
-			}
-			return;
 		} catch (error) {
 			console.error('Error fetching server stats:', error);
 		}
