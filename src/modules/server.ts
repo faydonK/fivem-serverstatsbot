@@ -27,6 +27,10 @@ export default class {
 		this.id = serverID;
 		this.serverName = process.env.FIVEM_SERVER_NAME;
 		this.interval = Number(process.env.BOT_CHECKSTATUS_INTERVAL);
+		console.log('Server module initialized with:');
+		console.log('- Server ID:', this.id);
+		console.log('- Server Name:', this.serverName);
+		console.log('- Update Interval:', this.interval, 'seconds');
 		// Set initial server stats.
 		await this.getStats();
 		// Start update interval.
@@ -40,31 +44,54 @@ export default class {
 	 */
 	static async getStats(): Promise<void> {
 		console.log('Fetching server stats...');
+		console.log('Server ID:', this.id);
+		console.log('API URL:', this.serverList + this.id);
 		// Fetch stats.
-		const stats = await fetch(this.serverList + this.id, {
-			headers: { 'User-Agent': 'cfx' },
-		}).then(res => {
-			if (res.ok) return res.json() as Promise<CFXServerAPIData | false>;
-			return false;
-		});
-		// Server not online / not found.
-		// If server is online, but bot isn't registering it as online...then your invite id may be wrong.
-		if (!stats) {
-			if (!this.online) return;
-			if (this.online) this.online = false;
-			this.maxPlayers = 0;
-			this.currentCount = 0;
-			// Update bot status when server goes offline
+		try {
+			const response = await fetch(this.serverList + this.id, {
+				headers: { 'User-Agent': 'cfx' },
+			});
+			
+			console.log('Response status:', response.status);
+			console.log('Response ok:', response.ok);
+			
+			if (!response.ok) {
+				console.error('API request failed with status:', response.status);
+				throw new Error(`HTTP ${response.status}`);
+			}
+			
+			const stats = await response.json() as CFXServerAPIData;
+			console.log('Server data received:', {
+				hostname: stats.Data?.hostname,
+				clients: stats.Data?.clients,
+				maxClients: stats.Data?.sv_maxclients
+			});
+			
+			// Server online.
+			if (!this.online) {
+				this.online = true;
+				console.log('Server is now ONLINE');
+			}
+			this.maxPlayers = stats.Data.sv_maxclients;
+			this.currentCount = stats.Data.clients;
+			// Update bot status when stats change
 			if (this.botInstance) {
 				this.botInstance.updateBotStatus();
 			}
 			return;
+		} catch (error) {
+			console.error('Error fetching server stats:', error);
 		}
-		// Server online.
-		if (!this.online) this.online = true;
-		this.maxPlayers = stats.Data.sv_maxclients;
-		this.currentCount = stats.Data.clients;
-		// Update bot status when stats change
+		
+		// Server not online / not found.
+		// If server is online, but bot isn't registering it as online...then your invite id may be wrong.
+		if (this.online) {
+			this.online = false;
+			console.log('Server is now OFFLINE');
+		}
+		this.maxPlayers = 0;
+		this.currentCount = 0;
+		// Update bot status when server goes offline
 		if (this.botInstance) {
 			this.botInstance.updateBotStatus();
 		}
