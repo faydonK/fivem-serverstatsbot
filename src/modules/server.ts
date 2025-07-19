@@ -3,11 +3,19 @@ import type { CFXServerAPIData } from '~/types';
 export default class {
 	private static id: string;
 	private static serverList = 'https://servers-frontend.fivem.net/api/servers/single/';
+	private static botInstance: any;
 	static serverName: string;
 	static maxPlayers: number;
 	static currentCount: number;
 	static online = false;
 	static interval: number;
+	/**
+	 * Set the bot instance to update status when stats change.
+	 * @param bot Bot instance
+	 */
+	static setBotInstance(bot: any): void {
+		this.botInstance = bot;
+	}
 	/**
 	 * ! Can only monitor 1 server at a time currently.
 	 *
@@ -46,11 +54,19 @@ export default class {
 			if (this.online) this.online = false;
 			this.maxPlayers = 0;
 			this.currentCount = 0;
+			// Update bot status when server goes offline
+			if (this.botInstance) {
+				this.botInstance.updateBotStatus();
+			}
 			return;
 		}
 		// Server online.
 		if (!this.online) this.online = true;
 		this.maxPlayers = stats.Data.sv_maxclients;
 		this.currentCount = stats.Data.clients;
+		// Update bot status when stats change
+		if (this.botInstance) {
+			this.botInstance.updateBotStatus();
+		}
 	}
 }

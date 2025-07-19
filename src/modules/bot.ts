@@ -25,12 +25,21 @@ export default class extends Client {
 		console.log('Initializing bot...');
 		this.once('ready', () => {
 			this.user.setStatus('online');
-			this.user.setActivity(Server.serverName, {
-				type: ActivityType.Watching,
-			});
+			this.updateBotStatus();
 			console.log('Bot started!!');
 			// Post initial status update.
 			void this.postMessage(process.env.UPDATE_CHANNEL_ID, generateStatusEmbed(), true);
+		});
+	}
+	/**
+	 * Update the bot's Discord status with current player count.
+	 */
+	updateBotStatus(): void {
+		const statusText = Server.online 
+			? `${Server.currentCount} / ${Server.maxPlayers}` 
+			: Server.serverName;
+		this.user.setActivity(statusText, {
+			type: ActivityType.Watching,
 		});
 	}
 	/**
@@ -40,6 +49,8 @@ export default class extends Client {
 	async init(): Promise<string> {
 		// Init server class.
 		await Server.init(process.env.BOT_SERVER_ID);
+		// Set bot instance in Server class for status updates
+		Server.setBotInstance(this);
 		// Login and post immediate status update.
 		return this.login(this.token);
 	}
